@@ -1,16 +1,15 @@
 #!/bin/bash
 
-CONFIG_DIR="${BACKER_CONFIG_DIR:-$(pwd)}"
-STORE_DIR="${BACKER_STORE_DIR:-$(pwd)/store}"
-INTERNAL_HOST=${BACKER_INTERNAL_HOST:-localhost}
-EXTERNAL_HOST=${BACKER_EXTERNAL_HOST:-localhost}
-URL="${BACKER_URL:-http://$EXTERNAL_HOST}"
-PORT="${BACKER_PORT:-5666}"
-TPORT="${BACKER_TPORT:-5665}"
-if [[ -z "${BACKER_SALT}" ]]; then
+CONFIG_DIR="${VERIFIER_CONFIG_DIR:-$(pwd)}"
+STORE_DIR="${VERIFIER_STORE_DIR:-$(pwd)/store}"
+INTERNAL_HOST=${VERIFIER_INTERNAL_HOST:-localhost}
+EXTERNAL_HOST=${VERIFIER_EXTERNAL_HOST:-localhost}
+URL="${VERIFIER_URL:-http://$EXTERNAL_HOST}"
+PORT="${VERIFIER_PORT:-5666}"
+if [[ -z "${VERIFIER_SALT}" ]]; then
   SALT=""
 else
-  SALT="--salt ${BACKER_SALT}"
+  SALT="--salt ${VERIFIER_SALT}"
 fi
 
 mkdir -p $CONFIG_DIR/keri/cf
@@ -26,7 +25,7 @@ cat > $CONFIG_DIR/keri/cf/verifier.json <<EOF
 }
 EOF
 
-cat > $CONFIG_DIR/backer_cfg.json <<EOF
+cat > $CONFIG_DIR/verifier_cfg.json <<EOF
 {
   "transferable": false,
   "wits": [],
@@ -37,8 +36,8 @@ cat > $CONFIG_DIR/backer_cfg.json <<EOF
 }
 EOF
 
-kli init --name verifier --nopasscode  --config-dir $CONFIG_DIR --config-file backer --base $STORE_DIR $SALT
+kli init --name verifier --nopasscode  --config-dir $CONFIG_DIR --config-file verifier --base $STORE_DIR $SALT
 
-kli incept --name verifier --alias backer --config $CONFIG_DIR --file backer_cfg.json --base $STORE_DIR
+kli incept --name verifier --alias verifier --config $CONFIG_DIR --file verifier_cfg.json --base $STORE_DIR
 
-verifier start --name verifier  --alias backer -T $TPORT -H $PORT --ledger cardano --base $STORE_DIR
+verifier start --name verifier --alias verifier -H $PORT --base $STORE_DIR

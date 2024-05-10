@@ -23,7 +23,7 @@ setup(
     python_requires='>=3.10.4',
     install_requires=[
         'hio>=0.6.9',
-        'keri>=1.0.0',
+        'keri==1.1.13',
         'multicommand>=1.0.0'
     ]
     )
