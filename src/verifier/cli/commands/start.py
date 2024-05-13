@@ -10,7 +10,7 @@ from keri import help
 from keri.app import directing, habbing, keeping
 from keri.app.cli.common import existing
 
-from src.verifier import verify
+from ... import verify
 
 d = "Runs Cardano Ballot Keri verifier controller"
 parser = argparse.ArgumentParser(description=d)
@@ -23,14 +23,10 @@ parser.add_argument('-H', '--http',
                     action='store',
                     default=5631,
                     help="Local port number the HTTP server listens on. Default is 5666.")
-parser.add_argument('-T', '--tcp',
-                    action='store',
-                    default=5632,
-                    help="Local port number the TCP server listens on. Default is 5665.")
 parser.add_argument('-n', '--name',
                     action='store',
-                    default="backer",
-                    help="Name of controller. Default is backer.")
+                    default="verifier",
+                    help="Name of controller. Default is verifier.")
 parser.add_argument('--base', '-b', help='additional optional prefix to file location of KERI keystore',
                     required=False, default="")
 parser.add_argument('--alias', '-a', help='human readable alias for the new identifier prefix', required=True)
@@ -44,21 +40,20 @@ def launch(args):
 
     logger = help.ogler.getLogger()
 
-    logger.info("\n******* Starting Verifier for %s listening: http/%s, tcp/%s "
-                ".******\n\n", args.name, args.http, args.tcp)
+    logger.info("\n******* Starting Verifier for %s listening: http/%s "
+                ".******\n\n", args.name, args.http)
 
     runVerifier(name=args.name,
                 base=args.base,
                 alias=args.alias,
                 bran=args.bran,
-                tcp=int(args.tcp),
                 http=int(args.http))
 
-    logger.info("\n******* Ended Backer for %s listening: http/%s, tcp/%s"
-                ".******\n\n", args.name, args.http, args.tcp)
+    logger.info("\n******* Ended Verifier for %s listening: http/%s "
+                ".******\n\n", args.name, args.http)
 
 
-def runVerifier(name="backer", base="", alias="backer", bran="", tcp=5665, http=5666, expire=0.0):
+def runVerifier(name="verifier", base="", alias="verifier", bran="", http=5666, expire=0.0):
     """
     Setup and run one verifier
     """
@@ -75,16 +70,15 @@ def runVerifier(name="backer", base="", alias="backer", bran="", tcp=5665, http=
     else:
         hby = existing.setupHby(name=name, base=base, bran=bran)
 
-    hbyDoer = habbing.HaberyDoer(habery=hby)  # setup doer
+    hbyDoer = habbing.HaberyDoer(habery=hby)
 
     hab = hby.habByName(name=alias)
     if hab is None:
         hab = hby.makeHab(name=alias, transferable=False)
 
     doers = [hbyDoer]
-    doers.extend(verify.setupVerifier(alias=alias,
-                                      hby=hby,
-                                      tcpPort=tcp,
-                                      httpPort=http))
+    doers.extend(verify.setupVerifier(hby=hby,
+                                         hab=hab,
+                                         httpPort=http))
 
     directing.runController(doers=doers, expire=expire)

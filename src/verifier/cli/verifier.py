@@ -3,11 +3,12 @@
 CARDANO BALLOT KERI VERIFIER
 cli.commands module
 """
+import traceback
+
 import multicommand
 from keri import help
-from keri.app import directing
 
-from src.verifier.cli import commands
+from verifier.cli import commands
 
 logger = help.ogler.getLogger()
 
@@ -21,11 +22,11 @@ def main():
         return
 
     try:
-        doers = args.handler(args)
-        directing.runController(doers=doers, expire=0.0)
+        args.handler(args)
 
     except Exception as ex:
         print(f"ERR: {ex}")
+        traceback.print_exception(ex)
         return -1
 
 
