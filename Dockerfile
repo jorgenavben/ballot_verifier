@@ -6,7 +6,8 @@ WORKDIR /src
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-COPY ./ /src
+COPY requirements.txt setup.py .
+RUN mkdir src
 RUN pip3 install -r requirements.txt
 
 # Runtime stage
@@ -19,7 +20,7 @@ RUN apt update -qq && \
 
 COPY --from=builder /usr/local /usr/local
 
-COPY ./ /src
+COPY . .
 
 ENV CONFIG_DIR /usr/local/var/keri
 WORKDIR $CONFIG_DIR
