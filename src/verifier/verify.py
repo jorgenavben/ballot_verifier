@@ -10,7 +10,7 @@ from keri import help, kering
 from keri.app import oobiing
 from keri.core import coring
 from keri.db import basing
-from keri.help import helping
+from keri.help import helping, nowIso8601
 
 logger = help.ogler.getLogger()
 
@@ -25,6 +25,7 @@ def setupVerifier(hby, hab, httpPort=5632):
     app.add_route("/oobi", oobiEnd)
     verificationEnd = VerificationEnd(hab=hab)
     app.add_route("/verify", verificationEnd)
+    app.add_route("/health", HealthEnd())
 
     server = http.Server(port=httpPort, app=app)
     httpServerDoer = http.ServerDoer(server=server)
@@ -89,6 +90,10 @@ class VerificationEnd:
             resp.status = falcon.HTTP_400
             resp.text = f"Signature is invalid"
 
+class HealthEnd:
+    def on_get(self, req, resp):
+        resp.status = falcon.HTTP_OK
+        resp.media = {"message": f"Health is okay. Time is {nowIso8601()}"}
 
 def getRequiredParam(body, name):
     param = body.get(name)
