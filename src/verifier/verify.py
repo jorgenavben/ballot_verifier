@@ -14,7 +14,6 @@ from keri.help import helping
 
 logger = help.ogler.getLogger()
 
-
 def setupVerifier(hby, hab, httpPort=5632):
     doers = []
 
@@ -31,7 +30,7 @@ def setupVerifier(hby, hab, httpPort=5632):
 
     doers.extend([httpServerDoer, *oobiery.doers])
 
-    return doers
+    return app, doers
 
 
 class OOBIEnd:

@@ -25,5 +25,8 @@ setup(
         'hio>=0.6.9',
         'keri==1.1.13',
         'multicommand>=1.0.0'
+    ],
+    test_require=[
+        'pytest>=8.2.0'
     ]
     )
