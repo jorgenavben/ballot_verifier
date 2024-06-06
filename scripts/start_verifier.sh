@@ -6,6 +6,7 @@ INTERNAL_HOST=${VERIFIER_INTERNAL_HOST:-localhost}
 EXTERNAL_HOST=${VERIFIER_EXTERNAL_HOST:-localhost}
 URL="${VERIFIER_URL:-http://$EXTERNAL_HOST}"
 PORT="${VERIFIER_PORT:-5666}"
+ADMIN_PORT="${VERIFIER_ADMIN_PORT:-5667}"
 if [[ -z "${VERIFIER_SALT}" ]]; then
   SALT=""
 else
@@ -40,4 +41,4 @@ kli init --name verifier --nopasscode  --config-dir $CONFIG_DIR --config-file ve
 
 kli incept --name verifier --alias verifier --config $CONFIG_DIR --file verifier_cfg.json --base $STORE_DIR
 
-verifier start --name verifier --alias verifier -H $PORT --base $STORE_DIR
+verifier start --name verifier --alias verifier -P $PORT -A $ADMIN_PORT --base $STORE_DIR

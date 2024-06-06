@@ -19,10 +19,14 @@ parser.add_argument('-V', '--version',
                     action='version',
                     version=__version__,
                     help="Prints out version of script runner.")
-parser.add_argument('-H', '--http',
+parser.add_argument('-P', '--publicHttp',
                     action='store',
-                    default=5631,
-                    help="Local port number the HTTP server listens on. Default is 5666.")
+                    default=5666,
+                    help="Public facing local port number the HTTP server listens. Default is 5666.")
+parser.add_argument('-A', '--adminHttp',
+                    action='store',
+                    default=5667,
+                    help="Local port number the HTTP server listens on for admin APIs. Default is 5667.")
 parser.add_argument('-n', '--name',
                     action='store',
                     default="verifier",
@@ -30,8 +34,6 @@ parser.add_argument('-n', '--name',
 parser.add_argument('--base', '-b', help='additional optional prefix to file location of KERI keystore',
                     required=False, default="")
 parser.add_argument('--alias', '-a', help='human readable alias for the new identifier prefix', required=True)
-parser.add_argument('--passcode', '-p', help='22 character encryption passcode for keystore (is not saved)',
-                    dest="bran", default=None)  # passcode => bran
 
 
 def launch(args):
@@ -40,20 +42,17 @@ def launch(args):
 
     logger = help.ogler.getLogger()
 
-    logger.info("\n******* Starting Verifier for %s listening: http/%s "
-                ".******\n\n", args.name, args.http)
+    logger.info("\n******* Starting Verifier for %s listening: public http/%s, admin http/%s"
+                ".******\n\n", args.name, args.publicHttp, args.adminHttp)
 
     runVerifier(name=args.name,
                 base=args.base,
                 alias=args.alias,
-                bran=args.bran,
-                http=int(args.http))
-
-    logger.info("\n******* Ended Verifier for %s listening: http/%s "
-                ".******\n\n", args.name, args.http)
+                port=int(args.publicHttp),
+                adminPort=int(args.adminHttp))
 
 
-def runVerifier(name="verifier", base="", alias="verifier", bran="", http=5666, expire=0.0):
+def runVerifier(name="verifier", base="", alias="verifier", bran="", port=5666, adminPort=5667, expire=0.0):
     """
     Setup and run one verifier
     """
@@ -72,13 +71,15 @@ def runVerifier(name="verifier", base="", alias="verifier", bran="", http=5666, 
 
     hbyDoer = habbing.HaberyDoer(habery=hby)
 
-    hab = hby.habByName(name=alias)
+    hab: habbing.Hab = hby.habByName(name=alias)
     if hab is None:
         hab = hby.makeHab(name=alias, transferable=False)
 
     doers = [hbyDoer]
     doers.extend(verify.setupVerifier(hby=hby,
-                                         hab=hab,
-                                         httpPort=http))
+                                      hab=hab,
+                                      name=name,
+                                      port=port,
+                                      adminPort=adminPort))
 
     directing.runController(doers=doers, expire=expire)
