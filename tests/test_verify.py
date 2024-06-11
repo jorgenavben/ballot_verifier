@@ -1,96 +1,185 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-import pytest
 import falcon
+import pytest
 from falcon import testing
-from keri.app import habbing
+from keri import kering
 
 from verifier.verify import setupVerifier
 
-test_oobi_params = {
+oobi_params = {
     "oobi" : "sample_oobi"
 }
 
-test_verify_params = {
+verify_params = {
     "aid": "sample_aid",
     "signature": "sample_signature",
     "payload": "sample_payload"
 }
 
+invalid_params = {
+    "invalid_param": "sample"
+}
+
+response_no_params = "empty JSON body"
+response_missing_params = ["required field", "missing from request"]
+
 @pytest.fixture
-def client():
-    with habbing.openHab(name="test", transferable=True, temp=True, salt=b'0123456789abcdef') as (hby, hab):
-        app, doers = setupVerifier(hby, hab)
-        test_client = testing.TestClient(app)
-        test_client.hby = hby
-        test_client.hab = hab
-        return test_client
+def mock_hby():
+    # Mock the hby object
+    mock = MagicMock()
+    mock.db.roobi.get.return_value = None
+    mock.db.oobis.put.return_value = None
+    return mock
+@pytest.fixture
+def mock_hab():
+    # Mock the hab object
+    mock = MagicMock()
+    mock.kevers = {}
+    return mock
 
-def test_get_oobi(client):
-    mock_get = MagicMock()
-    mock_get.return_value = MagicMock(cid="sample_cid")
-    client.hby.db.roobi.get = mock_get
+@pytest.fixture
+def client(mock_hby, mock_hab):
+    app, _ = setupVerifier(mock_hby, mock_hab)
+    return testing.TestClient(app)
 
-    response = client.simulate_get('/oobi', json=test_oobi_params)
+class TestOOBIEnd:
+    def test_get_oobi(self, client, mock_hby):
+        mock_get = MagicMock()
+        mock_get.return_value = MagicMock(cid="sample_cid")
+        mock_hby.db.roobi.get = mock_get
 
-    assert response.status == falcon.HTTP_200
-    assert response.text == 'sample_cid'
+        response = client.simulate_get('/oobi', json=oobi_params)
 
-def test_get_oobi_not_found(client):
-    mock_get = MagicMock()
-    mock_get.return_value = None
-    client.hby.db.roobi.get = mock_get
+        assert response.status == falcon.HTTP_200
+        assert response.text == 'sample_cid'
 
-    response = client.simulate_get('/oobi', json=test_oobi_params)
+    def test_get_oobi_not_found(self, client, mock_hby):
+        mock_get = MagicMock()
+        mock_get.return_value = None
+        mock_hby.hby.db.roobi.get = mock_get
 
-    assert response.status == falcon.HTTP_404
+        response = client.simulate_get('/oobi', json=oobi_params)
 
-def test_post_oobi(client):
-    response = client.simulate_post('/oobi', json=test_oobi_params)
+        assert response.status == falcon.HTTP_404
 
-    assert response.status == falcon.HTTP_202
-    client.hby.db.oobis.put.assert_called_once()
+    def test_get_oobi_no_params(self, client):
+        response = client.simulate_get('/oobi')
 
-def test_post_verify_success(client):
-    client.hab = MagicMock()
-    kever = MagicMock()
-    kever.verfers = [MagicMock()]
-    kever.verfers[0].verify.return_value = True
-    client.hab.kevers = {'sample_aid': kever}
+        assert response.status == falcon.HTTP_400
+        assert response_no_params in response.text
 
-    response = client.simulate_post('/verify', json=test_verify_params)
+    def test_get_oobi_empty_params(self, client):
+        response = client.simulate_get('/oobi', json={})
 
-    assert response.status == falcon.HTTP_200
-    assert response.text == 'Verification successful'
+        assert response.status == falcon.HTTP_400
+        for substring in response_missing_params:
+            assert substring in response.text
 
-def test_post_verify_unknown_aid(client):
-    client.hab = MagicMock()
-    client.hab.kevers = {}
+    def test_get_oobi_invalid_params(self, client):
+        response = client.simulate_get('/oobi', json=invalid_params)
 
-    response = client.simulate_post('/verify', json=test_verify_params)
+        assert response.status == falcon.HTTP_400
+        for substring in response_missing_params:
+            assert substring in response.text
 
-    assert response.status == falcon.HTTP_404
-    assert 'Unknown AID' in response.text
+    def test_post_oobi(self, client, mock_hby):
+        response = client.simulate_post('/oobi', json=oobi_params)
 
-def test_post_verify_invalid_signature(client):
-    client.hab = MagicMock()
-    kever = MagicMock()
-    kever.verfers = [MagicMock()]
-    kever.verfers[0].verify.return_value = False
-    client.hab.kevers = {'sample_aid': kever}
+        # Retrieve the arguments that were passed to the put method
+        kwargs = mock_hby.db.oobis.put.call_args.kwargs
 
-    response = client.simulate_post('/verify', json=test_verify_params)
+        # Check the key and value arguments
+        key = kwargs['keys'][0]
+        value = kwargs['val']
 
-    assert response.status == falcon.HTTP_400
-    assert 'Signature is invalid' in response.text
+        print(key, value)
 
-def test_post_verify_invalid_signature_format(client):
-    client.hab = MagicMock()
-    kever = MagicMock()
-    kever.verfers = [MagicMock()]
-    client.hab.kevers = {'sample_aid': kever}
+        assert response.status == falcon.HTTP_202
+        assert key == 'sample_oobi'
+        from keri.db.basing import OobiRecord
+        assert isinstance(value, OobiRecord)
 
-    response = client.simulate_post('/verify', json=test_verify_params)
+    def test_post_oobi_no_params(self, client):
+        response = client.simulate_post('/oobi')
 
-    assert response.status == falcon.HTTP_400
-    assert 'Invalid signature format' in response.text
+        assert response.status == falcon.HTTP_400
+        assert response_no_params in response.text
+
+    def test_post_oobi_empty_params(self, client):
+        response = client.simulate_post('/oobi', json={})
+
+        assert response.status == falcon.HTTP_400
+        for substring in response_missing_params:
+            assert substring in response.text
+
+    def test_post_oobi_invalid_params(self, client):
+        response = client.simulate_post('/oobi', json=invalid_params)
+
+        assert response.status == falcon.HTTP_400
+        for substring in response_missing_params:
+            assert substring in response.text
+
+class TestVerificationEnd:
+    def test_post_verify_success(self, client, mock_hab):
+        mock_kever = MagicMock()
+        mock_verfer = MagicMock()
+        mock_verfer.verify.return_value = True
+        mock_kever.verfers = [mock_verfer]
+        mock_hab.kevers = {"sample_aid": mock_kever}
+
+        with patch('keri.core.coring.Cigar', return_value=MagicMock(verfer=mock_verfer)):
+            response = client.simulate_post('/verify', json=verify_params)
+
+        assert response.status == falcon.HTTP_200
+        assert response.text == 'Verification successful'
+
+    def test_post_verify_unknown_aid(self, client, mock_hab):
+        mock_hab.kevers = {}
+
+        response = client.simulate_post('/verify', json=verify_params)
+
+        assert response.status == falcon.HTTP_404
+        assert "Unknown AID" in response.text
+
+    def test_post_verify_invalid_signature(self, client, mock_hab):
+        mock_kever = MagicMock()
+        mock_verfer = MagicMock()
+        mock_verfer.verify.return_value = False  # Simulate signature verification failure
+        mock_kever.verfers = [mock_verfer]
+        mock_hab.kevers = {"sample_aid": mock_kever}
+
+        with patch('keri.core.coring.Cigar', return_value=MagicMock(verfer=mock_verfer)):
+            response = client.simulate_post('/verify', json=verify_params)
+
+        assert response.status == falcon.HTTP_400
+        assert "Signature is invalid" in response.text
+
+    def test_post_verify_invalid_signature_format(self, client):
+        with patch('keri.core.coring.Cigar') as mock_cigar:
+            mock_cigar.side_effect = kering.UnexpectedCodeError("Unsupported code =s.")
+
+            response = client.simulate_post('/verify', json={**verify_params, 'signature': 'invalid'})
+
+        assert response.status == falcon.HTTP_400
+        assert "Invalid signature format" in response.text
+
+    def test_post_verify_no_params(self, client):
+        response = client.simulate_post('/verify')
+
+        assert response.status == falcon.HTTP_400
+        assert response_no_params in response.text
+
+    def test_post_verify_empty_params(self, client):
+        response = client.simulate_post('/verify', json={})
+
+        assert response.status == falcon.HTTP_400
+        for substring in response_missing_params:
+            assert substring in response.text
+
+    def test_post_verify_invalid_params(self, client):
+        response = client.simulate_post('/verify', json=invalid_params)
+
+        assert response.status == falcon.HTTP_400
+        for substring in response_missing_params:
+            assert substring in response.text
