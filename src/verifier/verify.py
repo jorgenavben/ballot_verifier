@@ -3,95 +3,90 @@
 KERI
 keri.app.verify module
 """
-
 import falcon
+from hio.base import doing
 from hio.core import http
-from keri import help, kering
-from keri.app import oobiing
-from keri.core import coring
-from keri.db import basing
-from keri.help import helping
+from hio.help import decking
+from keri import help
+from keri.app import oobiing, querying, storing, forwarding
+from keri.core import eventing, routing, parsing
+from keri.peer import exchanging
+from . import controllers
 
 logger = help.ogler.getLogger()
 
-def setupVerifier(hby, hab, httpPort=5632):
+
+def setupVerifier(hby, hab, name, port, adminPort):
     doers = []
 
+    cues = decking.Deck()
+    queries = decking.Deck()
+
+    rvy = routing.Revery(db=hby.db, cues=cues)
+    kvy = eventing.Kevery(db=hby.db,
+                          lax=True,
+                          local=False,
+                          rvy=rvy,
+                          cues=cues)
+    kvy.registerReplyRoutes(router=rvy.rtr)
+
+    mbx = storing.Mailboxer(name=name, temp=hby.temp)
+    forwarder = forwarding.ForwardHandler(hby=hby, mbx=mbx)
+    exchanger = exchanging.Exchanger(hby=hby, handlers=[forwarder])
+    parser = parsing.Parser(framed=True,
+                            kvy=kvy,
+                            exc=exchanger,
+                            rvy=rvy)
+
     oobiery = oobiing.Oobiery(hby=hby)
+
     app = falcon.App(cors_enable=True)
+    app.add_route("/", controllers.HttpEnd(ims=parser.ims))
+    server = http.Server(port=port, app=app)
 
-    oobiEnd = OOBIEnd(hby=hby)
-    app.add_route("/oobi", oobiEnd)
-    verificationEnd = VerificationEnd(hab=hab)
-    app.add_route("/verify", verificationEnd)
+    adminApp = falcon.App(cors_enable=True)
+    adminApp.add_route("/oobi", controllers.OOBIEnd(hby=hby))
+    adminApp.add_route("/keystate", controllers.KeyStateEnd(hby=hby, hab=hab, queries=queries))
+    adminApp.add_route("/verify", controllers.VerificationEnd(hab=hab))
+    adminApp.add_route("/health", controllers.HealthEnd())
+    adminServer = http.Server(port=adminPort, app=adminApp)
 
-    server = http.Server(port=httpPort, app=app)
-    httpServerDoer = http.ServerDoer(server=server)
+    doers.extend([
+        ParserDoer(kvy=kvy, parser=parser),
+        Querier(hby=hby, hab=hab, kvy=kvy, queries=queries),
+        http.ServerDoer(server=server),
+        http.ServerDoer(server=adminServer),
+        *oobiery.doers
+    ])
 
-    doers.extend([httpServerDoer, *oobiery.doers])
-
-    return app, doers
+    return doers
 
 
-class OOBIEnd:
-    def __init__(self, hby):
+class Querier(doing.DoDoer):
+
+    def __init__(self, hby, hab, queries, kvy):
         self.hby = hby
-
-    def on_get(self, req, resp):
-        oobi = getRequiredParam(req.get_media(), 'oobi')
-
-        result = self.hby.db.roobi.get(keys=(oobi))
-        if result:
-            resp.status = falcon.HTTP_200
-            resp.text = result.cid
-        else:
-            resp.status = falcon.HTTP_404
-
-    def on_post(self, req, resp):
-        oobi = getRequiredParam(req.get_media(), 'oobi')
-        obr = basing.OobiRecord(date=helping.nowIso8601())
-        self.hby.db.oobis.put(keys=(oobi,), val=obr)
-        resp.status = falcon.HTTP_202
-
-
-class VerificationEnd:
-    def __init__(self, hab):
         self.hab = hab
+        self.queries = queries
+        self.kvy = kvy
 
-    def on_post(self, req, resp):
-        body = req.get_media()
-        aid = getRequiredParam(body, 'aid')
-        signature = getRequiredParam(body, 'signature')
-        payload = getRequiredParam(body, 'payload')
+        super(Querier, self).__init__(always=True)
 
-        try:
-            kever = self.hab.kevers[aid]
-        except KeyError as e:
-            resp.status = falcon.HTTP_404
-            resp.text = f"Unknown AID {aid}, please ensure corresponding OOBI has been resolved"
-            return
-        verfers = kever.verfers
+    def recur(self, tyme, deeds=None):
+        if self.queries:
+            pre = self.queries.popleft()
+            self.extend([querying.QueryDoer(hby=self.hby, hab=self.hab, pre=pre, kvy=self.kvy)])
 
-        try:
-            cigar = coring.Cigar(qb64=signature)
-        except (ValueError, kering.ShortageError) as e:
-            resp.status = falcon.HTTP_400
-            resp.text = f"Invalid signature format (single sig only supported) - error: {e}"
-            return
-
-        # Single sig support
-        cigar.verfer = verfers[0]
-        if cigar.verfer.verify(cigar.raw, str.encode(payload)):
-            resp.status = falcon.HTTP_200
-            resp.text = "Verification successful"
-        else:
-            resp.status = falcon.HTTP_400
-            resp.text = f"Signature is invalid"
+        return super(Querier, self).recur(tyme, deeds)
 
 
-def getRequiredParam(body, name):
-    param = body.get(name)
-    if param is None:
-        raise falcon.HTTPBadRequest(description=f"required field '{name}' missing from request")
+class ParserDoer(doing.Doer):
 
-    return param
+    def __init__(self, kvy, parser):
+        self.kvy = kvy
+        self.parser = parser
+        super(ParserDoer, self).__init__()
+
+    def recur(self, tyme=None):
+        done = yield from self.parser.parsator()
+        return done
