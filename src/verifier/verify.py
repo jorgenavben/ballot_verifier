@@ -59,7 +59,7 @@ def setupVerifier(hby, hab, name, port, adminPort):
         *oobiery.doers
     ])
 
-    return doers
+    return app, adminApp, doers
 
 
 class Querier(doing.DoDoer):

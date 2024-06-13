@@ -40,8 +40,8 @@ def mock_hab():
 
 @pytest.fixture
 def client(mock_hby, mock_hab):
-    app, _ = setupVerifier(mock_hby, mock_hab)
-    return testing.TestClient(app)
+    _, adminApp, _ = setupVerifier(mock_hby, mock_hab, name="test_app", port=5632, adminPort=8080)
+    return testing.TestClient(adminApp)
 
 class TestOOBIEnd:
     def test_get_oobi(self, client, mock_hby):
@@ -97,7 +97,7 @@ class TestOOBIEnd:
 
         assert response.status == falcon.HTTP_202
         assert key == 'sample_oobi'
-        from keri.db.basing import OobiRecord
+        from keri.db.basing import OobiRecord # When imported globally it raises a circular import error
         assert isinstance(value, OobiRecord)
 
     def test_post_oobi_no_params(self, client):
@@ -155,11 +155,14 @@ class TestVerificationEnd:
         assert response.status == falcon.HTTP_400
         assert "Signature is invalid" in response.text
 
-    def test_post_verify_invalid_signature_format(self, client):
-        with patch('keri.core.coring.Cigar') as mock_cigar:
-            mock_cigar.side_effect = kering.UnexpectedCodeError("Unsupported code =s.")
+    def test_post_verify_invalid_signature_format(self, client, mock_hab):
+        mock_kever = MagicMock()
+        mock_verfer = MagicMock()
+        mock_kever.verfers = [mock_verfer]
+        mock_hab.kevers["sample_aid"] = mock_kever
 
-            response = client.simulate_post('/verify', json={**verify_params, 'signature': 'invalid'})
+        with patch('keri.core.coring.Cigar', side_effect=kering.ShortageError):
+            response = client.simulate_post('/verify', json=verify_params)
 
         assert response.status == falcon.HTTP_400
         assert "Invalid signature format" in response.text
