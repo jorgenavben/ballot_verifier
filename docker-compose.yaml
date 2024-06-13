@@ -10,3 +10,4 @@ services:
       - PYTHONUNBUFFERED=1
     ports:
       - 5666:5666
+      - 5667:5667

@@ -22,8 +22,11 @@ setup(
     },
     python_requires='>=3.10.4',
     install_requires=[
-        'hio>=0.6.9',
+        'hio>=0.6.12',
         'keri @ git+https://git@github.com/cardano-foundation/keripy.git@86bd27168f5f9b09965c386aae28ea9719fe3158',
         'multicommand>=1.0.0'
+    ],
+    test_require=[
+        'pytest>=8.2.0'
     ]
     )

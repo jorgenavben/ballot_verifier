@@ -15,7 +15,6 @@ from . import controllers
 
 logger = help.ogler.getLogger()
 
-
 def setupVerifier(hby, hab, name, port, adminPort):
     doers = []
 
@@ -44,11 +43,7 @@ def setupVerifier(hby, hab, name, port, adminPort):
     app.add_route("/", controllers.HttpEnd(ims=parser.ims))
     server = http.Server(port=port, app=app)
 
-    adminApp = falcon.App(cors_enable=True)
-    adminApp.add_route("/oobi", controllers.OOBIEnd(hby=hby))
-    adminApp.add_route("/keystate", controllers.KeyStateEnd(hby=hby, hab=hab, queries=queries))
-    adminApp.add_route("/verify", controllers.VerificationEnd(hab=hab))
-    adminApp.add_route("/health", controllers.HealthEnd())
+    adminApp = createAdminApp(hby=hby, hab=hab, queries=queries)
     adminServer = http.Server(port=adminPort, app=adminApp)
 
     doers.extend([
@@ -61,6 +56,15 @@ def setupVerifier(hby, hab, name, port, adminPort):
 
     return doers
 
+def createAdminApp(hby, hab, queries):
+    # Set up Falcon administrative application
+    adminApp = falcon.App(cors_enable=True)
+    adminApp.add_route("/oobi", controllers.OOBIEnd(hby=hby))
+    adminApp.add_route("/keystate", controllers.KeyStateEnd(hby=hby, hab=hab, queries=queries))
+    adminApp.add_route("/verify", controllers.VerificationEnd(hab=hab))
+    adminApp.add_route("/health", controllers.HealthEnd())
+
+    return adminApp
 
 class Querier(doing.DoDoer):
 
