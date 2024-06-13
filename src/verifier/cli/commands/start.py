@@ -76,11 +76,10 @@ def runVerifier(name="verifier", base="", alias="verifier", bran="", port=5666, 
         hab = hby.makeHab(name=alias, transferable=False)
 
     doers = [hbyDoer]
-    _, _, doersVerifier = verify.setupVerifier(hby=hby,
+    doers.extend(verify.setupVerifier(hby=hby,
                                             hab=hab,
                                             name=name,
                                             port=port,
-                                            adminPort=adminPort)
-    doers.extend(doersVerifier)
+                                            adminPort=adminPort))
 
     directing.runController(doers=doers, expire=expire)

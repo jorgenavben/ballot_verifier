@@ -5,7 +5,7 @@ import pytest
 from falcon import testing
 from keri import kering
 
-from verifier.verify import setupVerifier
+from verifier.verify import createAdminApp
 
 oobi_params = {
     "oobi" : "sample_oobi"
@@ -40,7 +40,7 @@ def mock_hab():
 
 @pytest.fixture
 def client(mock_hby, mock_hab):
-    _, adminApp, _ = setupVerifier(mock_hby, mock_hab, name="test_app", port=5632, adminPort=8080)
+    adminApp = createAdminApp(mock_hby, mock_hab)
     return testing.TestClient(adminApp)
 
 class TestOOBIEnd:
@@ -92,8 +92,6 @@ class TestOOBIEnd:
         # Check the key and value arguments
         key = kwargs['keys'][0]
         value = kwargs['val']
-
-        print(key, value)
 
         assert response.status == falcon.HTTP_202
         assert key == 'sample_oobi'
