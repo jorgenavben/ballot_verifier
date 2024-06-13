@@ -1,5 +1,5 @@
 # Builder stage
-FROM python:3.10 AS builder
+FROM python:3.12 AS builder
 
 WORKDIR /src
 
@@ -11,7 +11,7 @@ RUN mkdir src
 RUN pip3 install -r requirements.txt
 
 # Runtime stage
-FROM python:3.10-slim AS base
+FROM python:3.12-slim AS base
 
 WORKDIR /src
 
